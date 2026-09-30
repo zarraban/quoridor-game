@@ -65,5 +65,5 @@ $$\text{Score} = (\text{dist}_{\text{Player}} - \text{dist}_{\text{AI}}) + \omeg
 
 ### 🛠️ 5. Архітектура та стек технологій
 
-ю **Python 3.12** + library **Pygame**
+**Python 3.12** + library **Pygame**
 
