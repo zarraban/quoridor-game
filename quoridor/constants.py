@@ -1,0 +1,77 @@
+BOARD_SIZE       = 9
+WALLS_PER_PLAYER = 10
+
+WINDOW_W  = 1100
+WINDOW_H  = 780
+
+CELL = 58
+GAP  = 10
+STEP = CELL + GAP
+
+BOARD_PX = BOARD_SIZE * STEP - GAP
+
+BOARD_OFFSET_X = (WINDOW_W - BOARD_PX) // 2
+BOARD_OFFSET_Y = 90
+
+BOTTOM_BAR_H = 90
+
+C_BG_TOP    = (8,   10,  28)
+C_BG_MID    = (12,  16,  42)
+C_BG_BOT    = (6,   8,   20)
+
+C_STONE_DARK  = (28,  32,  44)
+C_STONE_MID   = (36,  40,  55)
+C_STONE_LIGHT = (48,  54,  70)
+C_STONE_LINE  = (20,  24,  36)
+C_STONE_EDGE  = (55,  62,  80)
+
+C_RUNE        = (50,  90, 160, 60)
+
+C_CELL_HOVER  = (70,  130, 200, 100)
+C_CELL_VALID  = (60,  200, 100, 130)
+C_CELL_VALID_DOT = (100, 255, 140)
+
+C_WALL_BLUE   = (80,  200, 255)
+C_WALL_ORANGE = (255, 140,  40)
+C_WALL_GLOW_B = (40,  160, 255, 180)
+C_WALL_GLOW_O = (255, 120,  20, 180)
+C_WALL_PREV_OK  = (100, 220, 255, 160)
+C_WALL_PREV_BAD = (255,  60,  60, 160)
+
+C_GOAL_P1_GLOW = (60,  160, 255,  50)
+C_GOAL_P2_GLOW = (255, 120,  20,  50)
+C_GOAL_P1_LINE = (80,  180, 255, 180)
+C_GOAL_P2_LINE = (255, 140,  40, 180)
+
+C_P1        = (100, 180, 255)
+C_P1_DARK   = (30,   80, 180)
+C_P1_LIGHT  = (180, 220, 255)
+C_P1_GLOW   = (60,  140, 255, 120)
+
+C_P2        = (255, 130,  50)
+C_P2_DARK   = (160,  50,  10)
+C_P2_LIGHT  = (255, 200, 140)
+C_P2_GLOW   = (255, 100,  20, 120)
+
+C_TITLE     = (200, 220, 255)
+C_TITLE_SUB = (100, 130, 180)
+
+C_PANEL_BG      = (12,  16,  32, 210)
+C_PANEL_BORDER  = (60,  90, 160)
+C_PANEL_P1      = (40,  80, 180)
+C_PANEL_P2      = (160,  60,  10)
+
+C_BTN_BG        = (20,  28,  55)
+C_BTN_BORDER    = (55,  80, 140)
+C_BTN_ACTIVE_BG = (30,  70, 140)
+C_BTN_ACTIVE_BD = (80, 160, 255)
+C_BTN_TEXT      = (180, 210, 255)
+C_BTN_ACTIVE_T  = (255, 255, 255)
+
+C_TEXT      = (200, 215, 255)
+C_TEXT_DIM  = (80,  100, 150)
+C_ACCENT    = (255, 200,  50)
+C_ERROR     = (255,  80,  80)
+
+MODE_MOVE = "move"
+MODE_WALL = "wall"
