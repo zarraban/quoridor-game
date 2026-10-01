@@ -9,16 +9,19 @@ from quoridor.game_state import GameState
 class HUD:
     def __init__(self):
         pygame.font.init()
-        self.font_title   = pygame.font.SysFont("trebuchetms", 22, bold=True)
+        self.font_title   = pygame.font.SysFont("trebuchetms", 20, bold=True)
         self.font_big     = pygame.font.SysFont("trebuchetms", 18, bold=True)
         self.font_med     = pygame.font.SysFont("trebuchetms", 15, bold=True)
         self.font_small   = pygame.font.SysFont("trebuchetms", 13)
         self.font_btn     = pygame.font.SysFont("trebuchetms", 15, bold=True)
         self.font_btn_sub = pygame.font.SysFont("trebuchetms", 12)
-        self.font_name    = pygame.font.SysFont("trebuchetms", 17, bold=True)
+        self.font_name    = pygame.font.SysFont("trebuchetms", 16, bold=True)
         self.font_walls_n = pygame.font.SysFont("trebuchetms", 26, bold=True)
+        self.font_tab     = pygame.font.SysFont("trebuchetms", 12, bold=True)
 
         self.toggle_btn_rect = pygame.Rect(0, 0, 1, 1)
+        self.pvp_btn_rect = pygame.Rect(0, 0, 1, 1)
+        self.bot_btn_rect = pygame.Rect(0, 0, 1, 1)
 
     def _draw_move_arrow(self, surf: pygame.Surface, cx: int, cy: int, size: int, color: tuple):
         arm = size // 2
@@ -40,10 +43,10 @@ class HUD:
         pygame.draw.rect(surf, (255, 255, 255), wrect, 1, border_radius=3)
         pygame.draw.line(surf, (255, 255, 255), (wrect.left + 3, cy), (wrect.right - 3, cy), 1)
 
-    def draw_title(self, surf: pygame.Surface, tick: float):
-        tw, th = 460, 40
+    def draw_title_and_modes(self, surf: pygame.Surface, game_mode: str, tick: float):
+        tw, th = 420, 32
         tx = C.WINDOW_W // 2 - tw // 2
-        ty = 14
+        ty = 10
 
         tsurf = pygame.Surface((tw, th), pygame.SRCALPHA)
         tsurf.fill((10, 14, 32, 190))
@@ -56,7 +59,37 @@ class HUD:
         title_t = self.font_title.render("QUORIDOR  —  TACTICAL DUEL", True, (cr, cg, 255))
         surf.blit(title_t, title_t.get_rect(center=(C.WINDOW_W // 2, ty + th // 2)))
 
-    def draw_player_card(self, surf: pygame.Surface, gs: GameState, player: int, x: int, y: int, flip: bool, tick: float):
+        mx, my = pygame.mouse.get_pos()
+        tab_w, tab_h = 110, 26
+        tab_y = 48
+        center_x = C.WINDOW_W // 2
+
+        self.pvp_btn_rect = pygame.Rect(center_x - tab_w - 6, tab_y, tab_w, tab_h)
+        self.bot_btn_rect = pygame.Rect(center_x + 6, tab_y, tab_w, tab_h)
+
+        for rect, mode_name, label in (
+            (self.pvp_btn_rect, C.GAME_MODE_PVP, "1 VS 1 [F1]"),
+            (self.bot_btn_rect, C.GAME_MODE_BOT, "VS BOT [F1]"),
+        ):
+            is_active = game_mode == mode_name
+            is_hover = rect.collidepoint(mx, my)
+
+            bg = C.C_BTN_ACTIVE_BG if is_active else (22, 28, 50)
+            if is_hover and not is_active:
+                bg = (35, 45, 75)
+            bd = C.C_BTN_ACTIVE_BD if is_active else (50, 70, 120)
+
+            ts = pygame.Surface(rect.size, pygame.SRCALPHA)
+            ts.fill((*bg, 220))
+            surf.blit(ts, rect.topleft)
+            pygame.draw.rect(surf, bd, rect, 2 if is_active else 1, border_radius=5)
+
+            tc = (255, 255, 255) if is_active else (150, 180, 220)
+            lbl = self.font_tab.render(label, True, tc)
+            surf.blit(lbl, lbl.get_rect(center=rect.center))
+
+    def draw_player_card(self, surf: pygame.Surface, gs: GameState, player: int,
+                         game_mode: str, x: int, y: int, flip: bool, tick: float):
         pw, ph = 210, 64
         is_active = gs.current_player == player and gs.winner is None
         is_p1 = player == 0
@@ -85,7 +118,11 @@ class HUD:
         lbl = self.font_big.render(str(player + 1), True, (255, 255, 255))
         surf.blit(lbl, lbl.get_rect(center=(acx, acy)))
 
-        name = "ICE MAGE" if is_p1 else "FROST NOVA"
+        if is_p1:
+            name = "ICE MAGE [P1]"
+        else:
+            name = "FROST NOVA [BOT]" if game_mode == C.GAME_MODE_BOT else "FROST NOVA [P2]"
+
         tx = x + av_size + 14 if not flip else x + 12
         name_t = self.font_name.render(name, True, pc)
         surf.blit(name_t, (tx, y + 8))
@@ -100,7 +137,9 @@ class HUD:
             ind.fill((*pc, 240))
             surf.blit(ind, (x, y + ph - 3))
 
-    def draw_bottom_bar(self, surf: pygame.Surface, gs: GameState, mode: str, wall_horizontal: bool, status_msg: str):
+    def draw_bottom_bar(self, surf: pygame.Surface, gs: GameState, mode: str,
+                        game_mode: str, wall_horizontal: bool,
+                        status_msg: str, is_bot_thinking: bool = False):
         bh = C.BOTTOM_BAR_H
         by = C.WINDOW_H - bh
 
@@ -148,13 +187,19 @@ class HUD:
 
         if gs.winner is not None:
             wc = C.C_P1 if gs.winner == 0 else C.C_P2
-            wn = "ICE MAGE" if gs.winner == 0 else "FROST NOVA"
-            wt = self.font_big.render(f"{wn} WINS!", True, wc)
+            wn = "ICE MAGE" if gs.winner == 0 else ("FROST NOVA [BOT]" if game_mode == C.GAME_MODE_BOT else "FROST NOVA")
+            wt = self.font_big.render(f"{wn} ПЕРЕМІГ! 🏆", True, wc)
+            surf.blit(wt, (24, by + 30))
+        elif is_bot_thinking:
+            wt = self.font_big.render("БОТ ОБЧИСЛЮЄ ХІД...", True, C.C_ACCENT)
             surf.blit(wt, (24, by + 30))
         else:
             cp = gs.current_player
             pc = C.C_P1 if cp == 0 else C.C_P2
-            nm = "ХІД: ICE MAGE" if cp == 0 else "ХІД: FROST NOVA"
+            if cp == 0:
+                nm = "ХІД: ICE MAGE"
+            else:
+                nm = "ХІД: FROST NOVA [BOT]" if game_mode == C.GAME_MODE_BOT else "ХІД: FROST NOVA [P2]"
             turn_t = self.font_big.render(nm, True, pc)
             surf.blit(turn_t, (24, by + 30))
 
@@ -165,10 +210,10 @@ class HUD:
             r_hint = self.font_small.render("[R] повернути", True, C.C_TEXT_DIM)
             surf.blit(r_hint, (C.WINDOW_W - 220, by + 44))
         else:
-            hints = ["[F2] Нова гра", "[ПКМ / Esc] Скасувати"]
+            hints = ["[F1] Зміна режиму гри", "[F2] Нова гра", "[ПКМ/Esc] Скасувати"]
             for idx, h in enumerate(hints):
                 ht = self.font_small.render(h, True, (120, 145, 190))
-                surf.blit(ht, (C.WINDOW_W - 200, by + 22 + idx * 20))
+                surf.blit(ht, (C.WINDOW_W - 200, by + 16 + idx * 18))
 
         if status_msg:
             st = self.font_med.render(status_msg, True, C.C_ERROR)

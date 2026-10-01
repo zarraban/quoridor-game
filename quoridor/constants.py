@@ -74,3 +74,6 @@ C_ERROR     = (255,  85,  85)
 
 MODE_MOVE = "move"
 MODE_WALL = "wall"
+
+GAME_MODE_PVP = "pvp"
+GAME_MODE_BOT = "bot"

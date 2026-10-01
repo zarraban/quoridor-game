@@ -6,6 +6,7 @@ from quoridor.game_state import GameState
 from quoridor.board_view import BoardView
 from quoridor.pieces import WallView
 from quoridor.renderer import Renderer
+from quoridor.ai.minimax import MinimaxAgent
 
 
 class Game:
@@ -22,6 +23,9 @@ class Game:
         self.clock = pygame.time.Clock()
         self.renderer = Renderer(self.screen)
 
+        self.game_mode = C.GAME_MODE_BOT
+        self.ai_agent = MinimaxAgent(depth=2)
+
         self.state = GameState()
         self.mode = C.MODE_MOVE
         self.wall_horizontal = True
@@ -29,6 +33,8 @@ class Game:
         self.hovered_cell: tuple[int, int] | None = None
         self.status_msg = ""
         self.status_timer = 0
+        self.bot_thinking = False
+        self.bot_think_timer = 0
         self.running = True
 
     def new_game(self):
@@ -38,6 +44,15 @@ class Game:
         self.hovered_cell = None
         self.status_msg = ""
         self.status_timer = 0
+        self.bot_thinking = False
+        self.bot_think_timer = 0
+
+    def switch_game_mode(self, new_mode: str):
+        if self.game_mode != new_mode:
+            self.game_mode = new_mode
+            self.new_game()
+            mode_str = "1 VS 1" if new_mode == C.GAME_MODE_PVP else "VS BOT"
+            self.set_status(f"Режим змінено: {mode_str}")
 
     def set_status(self, msg: str, ms: int = 2500):
         self.status_msg = msg
@@ -54,6 +69,9 @@ class Game:
 
     def handle_events(self):
         mx, my = pygame.mouse.get_pos()
+        is_bot_turn = (self.game_mode == C.GAME_MODE_BOT and
+                       self.state.current_player == 1 and
+                       self.state.winner is None)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -61,24 +79,41 @@ class Game:
 
             elif event.type == pygame.KEYDOWN:
                 k = event.key
-                if k == pygame.K_F2:
+                if k == pygame.K_F1:
+                    new_mode = C.GAME_MODE_BOT if self.game_mode == C.GAME_MODE_PVP else C.GAME_MODE_PVP
+                    self.switch_game_mode(new_mode)
+                elif k == pygame.K_F2:
                     self.new_game()
                 elif k in (pygame.K_SPACE, pygame.K_TAB):
-                    self.toggle_mode()
+                    if not is_bot_turn:
+                        self.toggle_mode()
                 elif k == pygame.K_m:
-                    self.mode = C.MODE_MOVE
+                    if not is_bot_turn:
+                        self.mode = C.MODE_MOVE
                 elif k == pygame.K_w:
-                    if self.state.walls_left[self.state.current_player] > 0:
-                        self.mode = C.MODE_WALL
-                    else:
-                        self.set_status("У вас не залишилося стінок!")
+                    if not is_bot_turn:
+                        if self.state.walls_left[self.state.current_player] > 0:
+                            self.mode = C.MODE_WALL
+                        else:
+                            self.set_status("У вас не залишилося стінок!")
                 elif k == pygame.K_r:
                     self.wall_horizontal = not self.wall_horizontal
                 elif k == pygame.K_ESCAPE:
                     self.mode = C.MODE_MOVE
                     self.wall_preview = None
 
-            elif event.type == pygame.MOUSEBUTTONDOWN and self.state.winner is None:
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    if self.renderer.pvp_btn_rect.collidepoint(mx, my):
+                        self.switch_game_mode(C.GAME_MODE_PVP)
+                        return
+                    elif self.renderer.bot_btn_rect.collidepoint(mx, my):
+                        self.switch_game_mode(C.GAME_MODE_BOT)
+                        return
+
+                if is_bot_turn or self.state.winner is not None:
+                    continue
+
                 if event.button == 3:
                     self.mode = C.MODE_MOVE
                     self.wall_preview = None
@@ -104,12 +139,35 @@ class Game:
         mx, my = pygame.mouse.get_pos()
         self.renderer.update(dt)
 
-        if self.mode == C.MODE_MOVE:
-            self.hovered_cell = BoardView.pixel_to_cell(mx, my)
-            self.wall_preview = None
-        else:
+        is_bot_turn = (self.game_mode == C.GAME_MODE_BOT and
+                       self.state.current_player == 1 and
+                       self.state.winner is None)
+
+        if is_bot_turn:
             self.hovered_cell = None
-            self.wall_preview = WallView.pixel_to_wall_slot(mx, my, self.wall_horizontal)
+            self.wall_preview = None
+            if not self.bot_thinking:
+                self.bot_thinking = True
+                self.bot_think_timer = 250
+            else:
+                self.bot_think_timer -= dt
+                if self.bot_think_timer <= 0:
+                    action = self.ai_agent.get_best_action(self.state, ai_player=1)
+                    if action:
+                        act_type, params = action
+                        if act_type == "move":
+                            self.state.move_pawn(*params)
+                        elif act_type == "wall":
+                            self.state.place_wall(*params)
+                    self.bot_thinking = False
+        else:
+            self.bot_thinking = False
+            if self.mode == C.MODE_MOVE:
+                self.hovered_cell = BoardView.pixel_to_cell(mx, my)
+                self.wall_preview = None
+            else:
+                self.hovered_cell = None
+                self.wall_preview = WallView.pixel_to_wall_slot(mx, my, self.wall_horizontal)
 
         if self.status_timer > 0:
             self.status_timer = max(0, self.status_timer - dt)
@@ -125,12 +183,14 @@ class Game:
             gs=self.state,
             valid_moves=valid_moves,
             mode=self.mode,
+            game_mode=self.game_mode,
             wall_preview=self.wall_preview,
             wall_horizontal=self.wall_horizontal,
             hovered_cell=self.hovered_cell,
             path_p0=path_p0,
             path_p1=path_p1,
             status_msg=self.status_msg,
+            is_bot_thinking=self.bot_thinking,
         )
         pygame.display.flip()
 

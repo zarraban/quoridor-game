@@ -23,6 +23,14 @@ class Renderer:
     def toggle_btn_rect(self) -> pygame.Rect:
         return self.hud.toggle_btn_rect
 
+    @property
+    def pvp_btn_rect(self) -> pygame.Rect:
+        return self.hud.pvp_btn_rect
+
+    @property
+    def bot_btn_rect(self) -> pygame.Rect:
+        return self.hud.bot_btn_rect
+
     def update(self, dt: float):
         self._tick += dt * 0.001
         self.particles.update(dt)
@@ -30,12 +38,14 @@ class Renderer:
     def draw_frame(self, gs: GameState,
                    valid_moves: list[tuple[int, int]],
                    mode: str,
+                   game_mode: str,
                    wall_preview: tuple[int, int] | None,
                    wall_horizontal: bool,
                    hovered_cell: tuple[int, int] | None,
                    path_p0: list,
                    path_p1: list,
-                   status_msg: str = ""):
+                   status_msg: str = "",
+                   is_bot_thinking: bool = False):
 
         self.particles.draw(self.screen)
 
@@ -53,7 +63,10 @@ class Renderer:
 
         self.pawns.draw_pawns(self.screen, gs.pawns, self._tick)
 
-        self.hud.draw_title(self.screen, self._tick)
-        self.hud.draw_player_card(self.screen, gs, player=0, x=14, y=10, flip=False, tick=self._tick)
-        self.hud.draw_player_card(self.screen, gs, player=1, x=C.WINDOW_W - 224, y=10, flip=True, tick=self._tick)
-        self.hud.draw_bottom_bar(self.screen, gs, mode, wall_horizontal, status_msg)
+        self.hud.draw_title_and_modes(self.screen, game_mode, self._tick)
+        self.hud.draw_player_card(self.screen, gs, player=0, game_mode=game_mode,
+                                  x=14, y=10, flip=False, tick=self._tick)
+        self.hud.draw_player_card(self.screen, gs, player=1, game_mode=game_mode,
+                                  x=C.WINDOW_W - 224, y=10, flip=True, tick=self._tick)
+        self.hud.draw_bottom_bar(self.screen, gs, mode, game_mode, wall_horizontal,
+                                 status_msg, is_bot_thinking)
