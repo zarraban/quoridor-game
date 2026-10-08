@@ -17,11 +17,9 @@ class HUD:
         self.font_btn_sub = pygame.font.SysFont("trebuchetms", 12)
         self.font_name    = pygame.font.SysFont("trebuchetms", 16, bold=True)
         self.font_walls_n = pygame.font.SysFont("trebuchetms", 26, bold=True)
-        self.font_tab     = pygame.font.SysFont("trebuchetms", 12, bold=True)
+        self.font_score   = pygame.font.SysFont("trebuchetms", 16, bold=True)
 
         self.toggle_btn_rect = pygame.Rect(0, 0, 1, 1)
-        self.pvp_btn_rect = pygame.Rect(0, 0, 1, 1)
-        self.bot_btn_rect = pygame.Rect(0, 0, 1, 1)
 
     def _draw_move_arrow(self, surf: pygame.Surface, cx: int, cy: int, size: int, color: tuple):
         arm = size // 2
@@ -43,7 +41,7 @@ class HUD:
         pygame.draw.rect(surf, (255, 255, 255), wrect, 1, border_radius=3)
         pygame.draw.line(surf, (255, 255, 255), (wrect.left + 3, cy), (wrect.right - 3, cy), 1)
 
-    def draw_title_and_modes(self, surf: pygame.Surface, game_mode: str, tick: float):
+    def draw_title(self, surf: pygame.Surface, tick: float):
         tw, th = 420, 32
         tx = C.WINDOW_W // 2 - tw // 2
         ty = 10
@@ -59,38 +57,10 @@ class HUD:
         title_t = self.font_title.render("QUORIDOR  —  TACTICAL DUEL", True, (cr, cg, 255))
         surf.blit(title_t, title_t.get_rect(center=(C.WINDOW_W // 2, ty + th // 2)))
 
-        mx, my = pygame.mouse.get_pos()
-        tab_w, tab_h = 110, 26
-        tab_y = 48
-        center_x = C.WINDOW_W // 2
-
-        self.pvp_btn_rect = pygame.Rect(center_x - tab_w - 6, tab_y, tab_w, tab_h)
-        self.bot_btn_rect = pygame.Rect(center_x + 6, tab_y, tab_w, tab_h)
-
-        for rect, mode_name, label in (
-            (self.pvp_btn_rect, C.GAME_MODE_PVP, "1 VS 1 [F1]"),
-            (self.bot_btn_rect, C.GAME_MODE_BOT, "VS BOT [F1]"),
-        ):
-            is_active = game_mode == mode_name
-            is_hover = rect.collidepoint(mx, my)
-
-            bg = C.C_BTN_ACTIVE_BG if is_active else (22, 28, 50)
-            if is_hover and not is_active:
-                bg = (35, 45, 75)
-            bd = C.C_BTN_ACTIVE_BD if is_active else (50, 70, 120)
-
-            ts = pygame.Surface(rect.size, pygame.SRCALPHA)
-            ts.fill((*bg, 220))
-            surf.blit(ts, rect.topleft)
-            pygame.draw.rect(surf, bd, rect, 2 if is_active else 1, border_radius=5)
-
-            tc = (255, 255, 255) if is_active else (150, 180, 220)
-            lbl = self.font_tab.render(label, True, tc)
-            surf.blit(lbl, lbl.get_rect(center=rect.center))
-
     def draw_player_card(self, surf: pygame.Surface, gs: GameState, player: int,
-                         game_mode: str, x: int, y: int, flip: bool, tick: float):
-        pw, ph = 210, 64
+                         game_mode: str, score: int, target_wins: int,
+                         x: int, y: int, flip: bool, tick: float):
+        pw, ph = 240, 64
         is_active = gs.current_player == player and gs.winner is None
         is_p1 = player == 0
         pc = C.C_P1 if is_p1 else C.C_P2
@@ -118,19 +88,31 @@ class HUD:
         lbl = self.font_big.render(str(player + 1), True, (255, 255, 255))
         surf.blit(lbl, lbl.get_rect(center=(acx, acy)))
 
-        if is_p1:
-            name = "ICE MAGE [P1]"
-        else:
-            name = "FROST NOVA [BOT]" if game_mode == C.GAME_MODE_BOT else "FROST NOVA [P2]"
-
-        tx = x + av_size + 14 if not flip else x + 12
+        name = "ICE MAGE" if is_p1 else "FROST NOVA"
         name_t = self.font_name.render(name, True, pc)
-        surf.blit(name_t, (tx, y + 8))
-
         walls_label = self.font_small.render("WALLS", True, (130, 155, 195))
-        surf.blit(walls_label, (tx, y + 32))
         walls_n = self.font_walls_n.render(str(gs.walls_left[player]), True, pc)
-        surf.blit(walls_n, (tx + 50, y + 23))
+        score_t = self.font_score.render(f"WINS: {score}/{target_wins}", True, C.C_ACCENT)
+
+        if not flip:
+            tx = x + av_size + 14
+            surf.blit(name_t, (tx, y + 8))
+            surf.blit(walls_label, (tx, y + 32))
+            surf.blit(walls_n, (tx + 50, y + 23))
+            
+            sx = x + pw - score_t.get_width() - 8
+            surf.blit(score_t, (sx, y + 8))
+        else:
+            tx = x + pw - av_size - 14 - name_t.get_width()
+            surf.blit(name_t, (tx, y + 8))
+            
+            w_total_w = walls_label.get_width() + 6 + walls_n.get_width()
+            wx = x + pw - av_size - 14 - w_total_w
+            surf.blit(walls_label, (wx, y + 32))
+            surf.blit(walls_n, (wx + walls_label.get_width() + 6, y + 23))
+            
+            sx = x + 8
+            surf.blit(score_t, (sx, y + 8))
 
         if is_active:
             ind = pygame.Surface((pw, 3), pygame.SRCALPHA)
@@ -187,8 +169,8 @@ class HUD:
 
         if gs.winner is not None:
             wc = C.C_P1 if gs.winner == 0 else C.C_P2
-            wn = "ICE MAGE" if gs.winner == 0 else ("FROST NOVA [BOT]" if game_mode == C.GAME_MODE_BOT else "FROST NOVA")
-            wt = self.font_big.render(f"{wn} ПЕРЕМІГ! 🏆", True, wc)
+            wn = "ICE MAGE" if gs.winner == 0 else "FROST NOVA"
+            wt = self.font_big.render(f"{wn} ПЕРЕМОГА У РАУНДІ! 🏆", True, wc)
             surf.blit(wt, (24, by + 30))
         elif is_bot_thinking:
             wt = self.font_big.render("БОТ ОБЧИСЛЮЄ ХІД...", True, C.C_ACCENT)
@@ -196,10 +178,7 @@ class HUD:
         else:
             cp = gs.current_player
             pc = C.C_P1 if cp == 0 else C.C_P2
-            if cp == 0:
-                nm = "ХІД: ICE MAGE"
-            else:
-                nm = "ХІД: FROST NOVA [BOT]" if game_mode == C.GAME_MODE_BOT else "ХІД: FROST NOVA [P2]"
+            nm = "ХІД: ICE MAGE" if cp == 0 else "ХІД: FROST NOVA"
             turn_t = self.font_big.render(nm, True, pc)
             surf.blit(turn_t, (24, by + 30))
 
@@ -210,10 +189,10 @@ class HUD:
             r_hint = self.font_small.render("[R] повернути", True, C.C_TEXT_DIM)
             surf.blit(r_hint, (C.WINDOW_W - 220, by + 44))
         else:
-            hints = ["[F1] Зміна режиму гри", "[F2] Нова гра", "[ПКМ/Esc] Скасувати"]
+            hints = ["[Esc] В меню", "[ПКМ] Скасувати", "Клік для наступного раунду" if gs.winner is not None else ""]
             for idx, h in enumerate(hints):
                 ht = self.font_small.render(h, True, (120, 145, 190))
-                surf.blit(ht, (C.WINDOW_W - 200, by + 16 + idx * 18))
+                surf.blit(ht, (C.WINDOW_W - 220, by + 16 + idx * 18))
 
         if status_msg:
             st = self.font_med.render(status_msg, True, C.C_ERROR)

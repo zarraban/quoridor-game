@@ -77,3 +77,6 @@ MODE_WALL = "wall"
 
 GAME_MODE_PVP = "pvp"
 GAME_MODE_BOT = "bot"
+
+STATE_MENU = "menu"
+STATE_PLAYING = "playing"
